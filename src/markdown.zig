@@ -27,7 +27,9 @@ const minline = @import("markdown_inline.zig");
 const escapeInto = mtext.escapeInto;
 const isDigit = mtext.isDigit;
 const isAsciiAlpha = mtext.isAsciiAlpha;
-const Budget = mtext.Budget;
+/// The renderer's work budget, per byte and a base: a message over it is
+/// rendered as `malformed_html` (markdown_text.zig).
+pub const Budget = mtext.Budget;
 const RenderError = mtext.RenderError;
 
 /// render turns a raw chat message body into HTML. It implements — and IS the
