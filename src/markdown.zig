@@ -17,9 +17,12 @@
 //! silently regress.
 
 const std = @import("std");
-const fence = @import("markdown_fence.zig");
+/// Code fences, which a host's feeds also parse (a code feed's blocks).
+pub const fence = @import("markdown_fence.zig");
 const mtext = @import("markdown_text.zig");
 const mmedia = @import("markdown_media.zig");
+/// Images and media, which a host's feeds also find (an images feed).
+pub const media = mmedia;
 const minline = @import("markdown_inline.zig");
 
 // Shared text primitives live in the markdown_text leaf; alias the few the block
