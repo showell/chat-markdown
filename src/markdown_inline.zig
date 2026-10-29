@@ -15,6 +15,7 @@
 //! rules) — no separate post-pass re-scans the finished HTML.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const mtext = @import("markdown_text.zig");
 const mmedia = @import("markdown_media.zig");
 const mlinks = @import("markdown_links.zig");
@@ -381,6 +382,10 @@ fn autolinkAt(text: []const u8, i: usize, email_dead: *usize, budget: *Budget) ?
     return null;
 }
 
+/// The bytes urlEnd's trailing trim reads, counted only in a test build: the
+/// test below holds them linear in the URL's length.
+var url_trim_reads: usize = 0;
+
 /// urlEnd consumes URL characters from start (up to whitespace or '<') then
 /// trims GFM trailing punctuation and unbalanced ')'.
 fn urlEnd(text: []const u8, start: usize, budget: *Budget) ?usize {
@@ -396,13 +401,23 @@ fn urlEnd(text: []const u8, start: usize, budget: *Budget) ?usize {
         text[dend] != '#' and text[dend] != ':') : (dend += 1)
     {}
     if (std.mem.indexOfScalar(u8, text[dstart..dend], '.') == null) return null;
+    // The parens are counted once; a trimmed ')' leaves the count with it, so
+    // a URL followed by n ')' costs n, not n² (the work budget never sees it).
+    var opens: usize = 0;
+    var closes: usize = 0;
+    for (text[start..end]) |c| {
+        if (c == '(') opens += 1 else if (c == ')') closes += 1;
+    }
+    if (builtin.is_test) url_trim_reads += end - start;
     while (end > start) {
         const c = text[end - 1];
+        if (builtin.is_test) url_trim_reads += 1;
         switch (c) {
             '?', '!', '.', ',', ':', '*', '_', '~', '\'', '"' => end -= 1,
             ')' => {
-                if (countByte(text[start..end], ')') > countByte(text[start..end], '(')) {
+                if (closes > opens) {
                     end -= 1;
+                    closes -= 1;
                 } else break;
             },
             else => break,
@@ -560,14 +575,6 @@ fn isEmailLocalChar(c: u8) bool {
     return isAsciiAlnum(c) or c == '.' or c == '_' or c == '+' or c == '-';
 }
 
-fn countByte(s: []const u8, b: u8) usize {
-    var n: usize = 0;
-    for (s) |c| {
-        if (c == b) n += 1;
-    }
-    return n;
-}
-
 test "a link's dangerous scheme is caught as a browser reads it: tabs and newlines inside, spaces and control bytes before (metal-vmm QUEUE 172)" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -586,4 +593,26 @@ test "a link's dangerous scheme is caught as a browser reads it: tabs and newlin
         const end = std.mem.indexOfScalarPos(u8, html, href_at + 6, '"').?;
         try std.testing.expectEqualStrings("", html[href_at + 6 .. end]);
     }
+}
+
+test "a bare URL's trailing ')' trim reads each byte a bounded number of times, however many ')' follow it" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const markdown = @import("markdown.zig");
+    // n = 32768: the old trim recounted the parens over the whole URL for
+    // each ')', about n² reads (a second here, invisible to the work budget).
+    const n = 32768;
+    inline for (.{ "https://a.b", "www.a.b" }) |head| {
+        const md = try a.alloc(u8, head.len + n);
+        @memcpy(md[0..head.len], head);
+        @memset(md[head.len..], ')');
+        url_trim_reads = 0;
+        const html = try markdown.render(a, md);
+        try std.testing.expect(url_trim_reads <= 3 * md.len);
+        try std.testing.expect(std.mem.indexOf(u8, html, head ++ "</a>)))") != null);
+    }
+    // A balanced ')' stays in the link; the unbalanced one after it does not.
+    const html = try markdown.render(a, "https://a.b/(x)))");
+    try std.testing.expect(std.mem.indexOf(u8, html, ">https://a.b/(x)</a>))") != null);
 }
