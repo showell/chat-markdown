@@ -796,6 +796,24 @@ test "a MSG_ reference becomes its link in a paragraph, a heading and reflowed p
     try std.testing.expect(std.mem.indexOf(u8, try render(a, "[about MSG_plans_3](https://example.org)"), "msg-ref") == null);
 }
 
+test "a channel's MSG_ reference becomes its link as a topic's does, naming no URL; text like MSG_x.y stays text" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    try std.testing.expectEqualStrings(
+        "<p>see <a href=\"#msg-Cobblestone.ChitChat_5\" class=\"msg-ref\">MSG_Cobblestone.ChitChat_5</a>.</p>\n",
+        try render(a, "see MSG_Cobblestone.ChitChat_5."),
+    );
+    try std.testing.expectEqualStrings(
+        "<p>see <a href=\"#msg-plans_3\" class=\"msg-ref\">MSG_plans_3</a> and <a href=\"#msg-general.plans_3\" class=\"msg-ref\">MSG_general.plans_3</a></p>\n",
+        try render(a, "see MSG_plans_3 and MSG_general.plans_3"),
+    );
+    for ([_][]const u8{ "MSG_x.y", "MSG_x.y_", "MSG_1x.y_2", "MSG_a.b.c_5" }) |md| {
+        try std.testing.expect(std.mem.indexOf(u8, try render(a, md), "msg-ref") == null);
+    }
+    try std.testing.expect(std.mem.indexOf(u8, try render(a, "[about MSG_a.b_1](https://example.org)"), "msg-ref") == null);
+}
+
 test "trusted rendering keeps a line break a line break; its reflow joins the lines" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
