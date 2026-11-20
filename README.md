@@ -1,14 +1,15 @@
 # chat-markdown
 
-The markdown dialect of Gopher Chat (lynrummy.com/chat), rendered to HTML, in
-Zig with no dependencies beyond the standard library.
+The markdown dialect of Gopher Chat, the chat in
+[angry-gopher](https://github.com/showell/angry-gopher), rendered to HTML.
+It is Zig, on the standard library alone.
 
 The code here was written by AI coding agents (Claude), with human supervision.
+Point an agent at this repo to extend it.
 
-**The renderer is the definition of the dialect.** There is no outside
-oracle. Where it departs from CommonMark, it does so on purpose. For example,
-inline markup is per line: `**`, backticks and `[...]` never pair across a
-hard wrap.
+**The renderer is the definition of the dialect.** Where it departs from
+CommonMark, it does so on purpose. For example, inline markup is per line:
+`**`, backticks and `[...]` pair within one line of the source.
 
 ## Use
 
@@ -21,20 +22,10 @@ zig build test    # every file's tests
 
 ## Layout
 
-- `src/markdown.zig` is the entry: blocks and the render.
-- Its neighbours, each imported from it, handle one concern apiece:
-  - `markdown_fence.zig`: code fences;
-  - `markdown_inline.zig`: inline markup;
-  - `markdown_links.zig`: links;
-  - `markdown_media.zig`: images and media;
-  - `markdown_text.zig`: text and escaping.
+`src/markdown.zig` is the entry: blocks and the render. Its neighbours in
+`src/` each handle one concern (fences, inline markup, links, media, text).
 
-The history before this repository is angry-gopher's; it was split out with
-`git filter-branch`, so `git log --follow` reaches back through it.
-
-## Not here yet
-
-The regression harness, which renders frozen corpora and compares them with
-the gold, still lives in angry-gopher (`zig-server/src/markdown_regression_test.zig`,
-`ops/check_markdown`), with the benchmark and the hostile-input probe. All three
-read chat transcripts to gather messages.
+`git log --follow` reaches back into angry-gopher's history, where this code
+began. The dialect's benchmark and hostile-input probe live there
+(`zig-server/src/markdown_bench.zig`, `markdown_hostile_probe.zig`), since
+they read chat transcripts.
