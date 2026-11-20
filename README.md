@@ -3,6 +3,8 @@
 The markdown dialect of Gopher Chat (lynrummy.com/chat), rendered to HTML, in
 Zig with no dependencies beyond the standard library.
 
+The code here was written by AI coding agents (Claude), with human supervision.
+
 **The renderer is the definition of the dialect.** There is no outside
 oracle. Where it departs from CommonMark, it does so on purpose. For example,
 inline markup is per line: `**`, backticks and `[...]` never pair across a
